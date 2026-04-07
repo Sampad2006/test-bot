@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wellness AI — Track B</title>
+  <meta name="description" content="A emotionally-aware AI companion that listens between the lines." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Animated background -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Setup Modal -->
+  <div id="setup-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-logo">🧠</div>
+      <h1 class="modal-title">Wellness AI</h1>
+      <p class="modal-subtitle">An emotionally-aware presence that listens between the lines.</p>
+      <div class="form-group">
+        <label for="name-input">What should I call you?</label>
+        <input type="text" id="name-input" placeholder="Your first name..." autocomplete="off" />
+      </div>
+      <button id="start-btn" class="btn-primary">Begin conversation</button>
+      <p class="disclaimer">⚠️ This is an AI, not a therapist. In a crisis, call iCall: <strong>9152987821</strong></p>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app hidden">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="status-dot" id="status-dot"></div>
+        <span class="header-title">Wellness AI</span>
+      </div>
+      <div class="header-right">
+        <div id="emotion-badge" class="emotion-badge hidden">
+          <span id="emotion-icon">💭</span>
+          <span id="emotion-label">Listening...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Crisis Banner -->
+    <div id="crisis-banner" class="crisis-banner hidden">
+      <span>🆘</span>
+      <span>If you're in crisis, please call iCall: <strong>9152987821</strong> or reach a trusted person now.</span>
+      <button onclick="document.getElementById('crisis-banner').classList.add('hidden')">✕</button>
+    </div>
+
+    <!-- Chat Area -->
+    <main id="chat-area" class="chat-area">
+      <div id="messages" class="messages"></div>
+    </main>
+
+    <!-- Input Area -->
+    <footer class="input-area">
+      <div class="input-wrapper">
+        <textarea
+          id="message-input"
+          placeholder="Share what's on your mind..."
+          rows="1"
+          autocomplete="off"
+        ></textarea>
+        <button id="send-btn" class="send-btn" aria-label="Send message">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+      <p class="input-hint">Not a substitute for professional help. AI can make mistakes.</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
