@@ -35,3 +35,27 @@ server.listen(config.port, () => {
     console.log(`   WebSocket: ws://localhost:${config.port}/chat`);
     console.log(`   Model: ${config.groqModel} via Groq\n`);
 });
+
+// --- Graceful Shutdown Handler ---
+const gracefulShutdown = () => {
+    console.log("\n🛑 Shutting down server and releasing port...");
+    
+    // Close the WebSocket server
+    wss.close();
+    
+    // Close the HTTP server
+    server.close(() => {
+        console.log("✅ Port released. Exiting.");
+        process.exit(0); // Force exit (kills dangling MongoDB connections)
+    });
+
+    // Fallback: forcefully kill after 2 seconds if something hangs
+    setTimeout(() => {
+        console.log("⚠️ Forced exit.");
+        process.exit(1);
+    }, 2000);
+};
+
+// Catch Ctrl+C (SIGINT) and kill commands (SIGTERM)
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);

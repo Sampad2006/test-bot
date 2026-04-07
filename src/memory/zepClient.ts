@@ -6,14 +6,27 @@ const zep = new ZepClient({ apiKey: config.zepApiKey });
 
 export async function ensureSession(userId: string): Promise<void> {
     try {
-        await zep.memory.getSession(userId);
-    } catch {
-        // Session doesn't exist — create it
-        await zep.memory.addSession({
-            sessionId: userId,
-            userId: userId,
-            metadata: { created_at: new Date().toISOString() },
-        });
+        // Step 1: Force User creation, silently ignore if they already exist
+        try {
+            await zep.user.add({ userId });
+        } catch (e) {
+            // Ignore: user exists or minor network blip
+        }
+
+        // Step 2: Try to get the session, or create it if it doesn't exist
+        try {
+            await zep.memory.getSession(userId);
+        } catch {
+            await zep.memory.addSession({
+                sessionId: userId,
+                userId: userId,
+                metadata: { created_at: new Date().toISOString() },
+            });
+        }
+    } catch (err: any) {
+        // CATCH-ALL: Prevents the bot from crashing!
+        // If Zep totally fails, we log it and proceed using CAMA memory only.
+        console.warn(`[Zep Warning] Could not ensure session for ${userId}:`, err.message);
     }
 }
 

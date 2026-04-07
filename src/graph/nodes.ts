@@ -142,9 +142,13 @@ export async function emoguardNode(
         state.responseDraft,
         history
     );
-    return { emoguardReport: report };
+    
+    // FIX: Actually increment the refineCount so the loop eventually breaks!
+    return { 
+        emoguardReport: report,
+        refineCount: (state.refineCount ?? 0) + 1 
+    };
 }
-
 // ─── Node: Output ─────────────────────────────────────────────────────────────
 export async function outputNode(
     state: WellnessStateType
@@ -152,6 +156,7 @@ export async function outputNode(
     return {
         finalResponse: state.responseDraft,
         messages: [...state.messages, new AIMessage(state.responseDraft)],
+        refineCount: 0 // FIX: Reset the counter for the next user message
     };
 }
 
