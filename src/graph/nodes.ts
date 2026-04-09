@@ -3,9 +3,10 @@ import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 import { config } from "../config";
 import { runRouterLLM } from "../router/routerLlm";
 import { CAMAMemory } from "../memory/cama";
-import { ensureSession, getContext, getUserFacts, addTurn } from "../memory/zepClient";
+import { ensureSession, getContext, getUserFacts, addTurn } from "../memory/hybridMemory";
 import { buildSystemPrompt } from "../prompts/systemPrompt";
 import { runEmoGuard, CRISIS_RESPONSES } from "../safety/emoguard";
+import { logFineTuneTurn } from "../finetune/logger";
 import type { WellnessStateType } from "./state";
 
 const groq = new Groq({ apiKey: config.groqApiKey });
@@ -72,8 +73,7 @@ export async function memoryFetchNode(
     await cama.load();
 
     const emotionTags = [
-        state.routerOutput?.emotion.primary ?? "",
-        state.routerOutput?.emotion.secondary ?? "",
+        ...(state.routerOutput?.emotion.emotions.map(e => e.label) ?? []),
         ...(state.routerOutput?.semantic_memory_tags ?? []),
     ].filter(Boolean);
 
@@ -122,6 +122,7 @@ export async function generationNode(
         ],
         temperature: 0.8,
         max_tokens: 350,
+        presence_penalty: 0.6,  // reduces repetitive/generic phrasing
     });
 
     const draft = completion.choices[0]?.message?.content ?? "";
@@ -165,8 +166,9 @@ export async function memoryUpdateNode(
     state: WellnessStateType
 ): Promise<Partial<WellnessStateType>> {
     const cama = getCAMA(state.userId);
+    const maxEmotionPercent = state.routerOutput?.emotion.emotions.reduce((max, e) => Math.max(max, e.percentage), 0) ?? 50;
     const salience = Math.max(
-        state.routerOutput?.emotion.intensity ?? 0.5,
+        maxEmotionPercent / 100.0,
         state.routerOutput?.volatility_score ?? 0.3
     );
 
@@ -174,15 +176,31 @@ export async function memoryUpdateNode(
     await cama.ingest(
         state.currentMessage,
         [
-            state.routerOutput?.emotion.primary ?? "",
-            state.routerOutput?.emotion.secondary ?? "",
+            ...(state.routerOutput?.emotion.emotions.map(e => e.label) ?? []),
             ...(state.routerOutput?.semantic_memory_tags ?? []),
         ].filter(Boolean),
         salience
     );
 
-    // Add to Zep long-term memory
+    // Add to Zep long-term memory + local fallback (via hybridMemory)
     await addTurn(state.userId, state.currentMessage, state.finalResponse);
+
+    // Log turn for future fine-tuning (fire-and-forget)
+    const systemPromptSnapshot = buildSystemPrompt({
+        userName: state.userName,
+        routerOutput: state.routerOutput!,
+        camaNodes: state.camaNodes,
+        camaConsole: state.camaConsole,
+        zepFacts: state.zepFacts,
+        zepSummary: state.zepSummary,
+    });
+    logFineTuneTurn({
+        systemPrompt: systemPromptSnapshot,
+        userMessage: state.currentMessage,
+        aiResponse: state.finalResponse,
+        routerOutput: state.routerOutput,
+        userId: state.userId,
+    }).catch(() => { /* silent */ });
 
     return {};
 }

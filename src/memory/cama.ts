@@ -67,8 +67,8 @@ export class CAMAMemory {
             salience,
         };
 
-        // Only store high-salience moments in the ring
-        if (salience > 0.6) {
+        // Store moderately-salient moments (lowered from 0.6 → 0.3 to capture early turns)
+        if (salience > 0.3) {
             this.ring.push(node);
             if (this.ring.length > this.maxRingSize) {
                 // Evict lowest-salience item

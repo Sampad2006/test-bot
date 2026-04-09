@@ -1,4 +1,4 @@
-import { StateGraph, END, START } from "@langchain/langgraph";
+import { StateGraph, END, START, MemorySaver } from "@langchain/langgraph";
 import { WellnessState } from "./state";
 import {
     intakeNode,
@@ -49,4 +49,5 @@ const workflow = new StateGraph(WellnessState)
     .addEdge("output", "memory_update")
     .addEdge("memory_update", END);
 
-export const wellnessGraph = workflow.compile();
+const checkpointer = new MemorySaver();
+export const wellnessGraph = workflow.compile({ checkpointer });

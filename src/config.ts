@@ -9,14 +9,16 @@ function required(key: string): string {
 
 export const config = {
     groqApiKey: required("GROQ_API_KEY"),
-    geminiApiKey: required("GEMINI_API_KEY"),
-    zepApiKey: required("ZEP_API_KEY"),
+    // Optional: Gemini API Key (commented out as per request to rely on Groq)
+    geminiApiKey: process.env.GEMINI_API_KEY ?? "",
+    // Optional: Zep Cloud falls back to LocalContextStore if key is missing/invalid
+    zepApiKey: process.env.ZEP_API_KEY ?? "",
     mongodbUri: required("MONGODB_URI"),
 
     port: parseInt(process.env.PORT ?? "8000"),
     nodeEnv: process.env.NODE_ENV ?? "development",
 
     groqModel: process.env.GROQ_MODEL ?? "llama-3.1-8b-instant",
-    routerModel: process.env.ROUTER_MODEL ?? "gemini-2.5-flash-latest",
+    routerModel: process.env.ROUTER_MODEL ?? "llama-3.1-8b-instant",
     emoguardModel: process.env.EMOGUARD_MODEL ?? "llama-3.1-8b-instant",
 };

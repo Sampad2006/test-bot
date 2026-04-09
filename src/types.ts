@@ -1,8 +1,11 @@
 // Router LLM output types
 export interface EmotionDetail {
-    primary: string;
-    secondary: string;
-    intensity: number; // 0.0 - 1.0
+    label: string;
+    percentage: number; // 0-100
+}
+
+export interface EmotionProfile {
+    emotions: EmotionDetail[];
     trajectory: "escalating" | "stable" | "de-escalating";
 }
 
@@ -17,7 +20,7 @@ export type ImplicitNeed =
 export interface RouterOutput {
     crisis_level: 0 | 1 | 2 | 3 | 4 | 5;
     crisis_flags: string[];
-    emotion: EmotionDetail;
+    emotion: EmotionProfile;
     implicit_need: ImplicitNeed;
     sarcasm_detected: boolean;
     volatility_score: number; // 0.0 - 1.0

@@ -2,31 +2,71 @@ import { ZepClient } from "@getzep/zep-cloud";
 import { config } from "../config";
 import type { ZepFact } from "../types";
 
-const zep = new ZepClient({ apiKey: config.zepApiKey });
+/**
+ * Zep Cloud Client (Primary Memory Layer)
+ * ----------------------------------------
+ * Connects to Zep's hosted knowledge-graph memory service.
+ * Includes a 5-minute circuit-breaker: if Zep fails, requests are skipped
+ * silently until the cooldown lapses — the hybrid layer's LocalContextStore
+ * ensures context is never lost during outages.
+ */
+
+// ─── Circuit Breaker ──────────────────────────────────────────────────────────
+const CIRCUIT_RESET_MS = 5 * 60 * 1000; // 5 minutes
+let zepDown = false;
+let zepDownSince = 0;
+let warnedOnce = false;
+
+function isCircuitOpen(): boolean {
+    if (!zepDown) return false;
+    if (Date.now() - zepDownSince > CIRCUIT_RESET_MS) {
+        zepDown = false;
+        warnedOnce = false;
+        console.log("[Zep] Circuit reset — retrying Zep Cloud.");
+        return false;
+    }
+    return true;
+}
+
+function tripCircuit(err: unknown): void {
+    zepDown = true;
+    zepDownSince = Date.now();
+    if (!warnedOnce) {
+        console.warn(
+            `[Zep] Circuit OPEN — Zep unavailable for 5 min. Falling back to LocalContextStore. Error: ${(err as Error)?.message ?? err}`
+        );
+        warnedOnce = true;
+    }
+}
+
+// ─── Client (lazy — only instantiated if key is present) ─────────────────────
+let zep: ZepClient | null = null;
+
+function getZepClient(): ZepClient | null {
+    if (!config.zepApiKey) return null;
+    if (!zep) zep = new ZepClient({ apiKey: config.zepApiKey });
+    return zep;
+}
+
+// ─── Public Functions ─────────────────────────────────────────────────────────
 
 export async function ensureSession(userId: string): Promise<void> {
+    if (isCircuitOpen()) return;
+    const client = getZepClient();
+    if (!client) return;
     try {
-        // Step 1: Force User creation, silently ignore if they already exist
+        try { await client.user.add({ userId }); } catch { /* exists */ }
         try {
-            await zep.user.add({ userId });
-        } catch (e) {
-            // Ignore: user exists or minor network blip
-        }
-
-        // Step 2: Try to get the session, or create it if it doesn't exist
-        try {
-            await zep.memory.getSession(userId);
+            await client.memory.getSession(userId);
         } catch {
-            await zep.memory.addSession({
+            await client.memory.addSession({
                 sessionId: userId,
-                userId: userId,
+                userId,
                 metadata: { created_at: new Date().toISOString() },
             });
         }
-    } catch (err: any) {
-        // CATCH-ALL: Prevents the bot from crashing!
-        // If Zep totally fails, we log it and proceed using CAMA memory only.
-        console.warn(`[Zep Warning] Could not ensure session for ${userId}:`, err.message);
+    } catch (err) {
+        tripCircuit(err);
     }
 }
 
@@ -35,15 +75,18 @@ export async function addTurn(
     userMessage: string,
     aiResponse: string
 ): Promise<void> {
+    if (isCircuitOpen()) return;
+    const client = getZepClient();
+    if (!client) return;
     try {
-        await zep.memory.add(userId, {
+        await client.memory.add(userId, {
             messages: [
                 { role: "user", roleType: "user", content: userMessage },
                 { role: "assistant", roleType: "assistant", content: aiResponse },
             ],
         });
     } catch (err) {
-        console.error("[Zep] addTurn error:", err);
+        tripCircuit(err);
     }
 }
 
@@ -51,8 +94,11 @@ export async function getContext(
     userId: string,
     query: string
 ): Promise<{ facts: ZepFact[]; summary: string }> {
+    if (isCircuitOpen()) return { facts: [], summary: "" };
+    const client = getZepClient();
+    if (!client) return { facts: [], summary: "" };
     try {
-        const results = await zep.memory.searchSessions({
+        const results = await client.memory.searchSessions({
             userId,
             text: query,
             limit: 8,
@@ -65,32 +111,33 @@ export async function getContext(
             invalid_at: r.invalid_at,
         }));
 
-        // Also get the memory summary for this session
         let summary = "";
         try {
-            const mem = await zep.memory.get(userId);
+            const mem = await client.memory.get(userId);
             summary = mem.summary?.content ?? "";
-        } catch {
-            // No summary yet — that's fine
-        }
+        } catch { /* no summary yet */ }
 
         return { facts, summary };
     } catch (err) {
-        console.error("[Zep] getContext error:", err);
+        tripCircuit(err);
         return { facts: [], summary: "" };
     }
 }
 
 export async function getUserFacts(userId: string): Promise<ZepFact[]> {
+    if (isCircuitOpen()) return [];
+    const client = getZepClient();
+    if (!client) return [];
     try {
-        const facts = await zep.user.getFacts(userId);
+        const facts = await client.user.getFacts(userId);
         return (facts.facts ?? []).map((f: any) => ({
             fact: f.fact,
             entity: f.name,
             valid_at: f.valid_at,
             invalid_at: f.invalid_at,
         }));
-    } catch {
+    } catch (err) {
+        tripCircuit(err);
         return [];
     }
 }

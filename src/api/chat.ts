@@ -7,11 +7,13 @@ interface IncomingMessage {
     message?: string;
     userId?: string;
     userName?: string;
+    sessionId?: string;
 }
 
 export function chatHandler(ws: WebSocket): void {
     let sessionUserId: string = uuidv4();
     let sessionUserName: string = "there";
+    let activeSessionId: string = uuidv4();
 
     ws.on("message", async (raw) => {
         let parsed: IncomingMessage;
@@ -26,7 +28,8 @@ export function chatHandler(ws: WebSocket): void {
         if (parsed.type === "init") {
             sessionUserId = parsed.userId ?? uuidv4();
             sessionUserName = parsed.userName ?? "there";
-            ws.send(JSON.stringify({ type: "ready", userId: sessionUserId, userName: sessionUserName }));
+            activeSessionId = parsed.sessionId ?? uuidv4();
+            ws.send(JSON.stringify({ type: "ready", userId: sessionUserId, userName: sessionUserName, sessionId: activeSessionId }));
             return;
         }
 
@@ -35,11 +38,16 @@ export function chatHandler(ws: WebSocket): void {
             try {
                 ws.send(JSON.stringify({ type: "status", message: "thinking" }));
 
-                const result = await wellnessGraph.invoke({
-                    currentMessage: parsed.message.trim(),
-                    userId: sessionUserId,
-                    userName: sessionUserName,
-                });
+                if (parsed.sessionId) activeSessionId = parsed.sessionId;
+                
+                const result = await wellnessGraph.invoke(
+                    {
+                        currentMessage: parsed.message.trim(),
+                        userId: sessionUserId,
+                        userName: sessionUserName,
+                    },
+                    { configurable: { thread_id: activeSessionId } }
+                );
 
                 const response = result.finalResponse as string;
                 const routerOutput = result.routerOutput;
