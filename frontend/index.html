@@ -27,6 +27,25 @@
     </div>
   </div>
 
+  <!-- ─── Emotion Activity Modal ─────────────────────────────────── -->
+  <div id="emotion-activity-modal" class="modal-overlay hidden">
+    <div class="emotion-activity-card">
+      <button class="modal-close-btn" onclick="document.getElementById('emotion-activity-modal').classList.add('hidden')">✕</button>
+      <h2 class="activity-title">Emotional State Overview</h2>
+      <div class="activity-container">
+        <div class="radar-section">
+          <canvas id="emotion-radar-chart" width="240" height="240"></canvas>
+        </div>
+        <div class="activity-stats">
+          <div class="stats-title">Emotion Distribution</div>
+          <div id="emotion-stats-list" class="emotion-stats-list">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── Main App ──────────────────────────────────────────────────── -->
   <div id="app" class="app hidden">
 
@@ -50,6 +69,13 @@
         </div>
       </div>
 
+      <!-- FIX 1: orb-canvas was missing from HTML; added here so initOrb() can find it -->
+      <div class="sidebar-section orb-section">
+        <div class="orb-container">
+          <canvas id="orb-canvas"></canvas>
+        </div>
+      </div>
+
       <div class="sidebar-section">
         <div class="sidebar-label">
           <span>EMOGUARD</span>
@@ -57,11 +83,6 @@
             <span class="live-dot" id="live-dot"></span>
             <span id="live-text">OFFLINE</span>
           </span>
-        </div>
-
-        <!-- Animated orb -->
-        <div class="orb-container">
-          <canvas id="orb-canvas"></canvas>
         </div>
 
         <div class="sidebar-meta">
@@ -72,6 +93,10 @@
 
       <div class="sidebar-section sidebar-emotion-section">
         <div class="sidebar-label">CURRENT STATE</div>
+
+        <!-- FIX 2: #emotion-chart was missing from HTML; updateEmotionChart() targets this -->
+        <div id="emotion-chart" class="emotion-chart"></div>
+
         <div id="emotion-display" class="emotion-display">
           <div class="emotion-bar-row">
             <div class="emotion-bar-top">
@@ -94,7 +119,28 @@
       <!-- Header -->
       <header class="panel-header">
         <span class="panel-header-left">Chat Interface</span>
-        <span class="panel-header-right">Emotional Support Engine</span>
+        <div class="panel-header-right">
+          <span>Emotional Support Engine</span>
+          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark/light mode" title="Toggle dark/light mode">
+            <!-- FIX 3: Wrapped icons in a relative container so absolute positioning works correctly -->
+            <span class="theme-icon-wrap">
+              <svg class="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+              </svg>
+              <svg class="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+              </svg>
+            </span>
+          </button>
+        </div>
       </header>
 
       <!-- Crisis Banner -->

@@ -31,10 +31,29 @@ let currentUserName = localStorage.getItem("wellness_userName") || "there";
 let currentSessionId = null;
 let sessions = JSON.parse(localStorage.getItem("wellness_sessions") || "[]");
 let orbAnimId   = null;
+let currentTheme = localStorage.getItem("wellness_theme") || "dark";
 
 // Persist initial global ID
 localStorage.setItem("wellness_userId", currentUserId);
 document.getElementById("name-input").value = localStorage.getItem("wellness_userName") || "";
+
+// Initialize theme on page load
+function initTheme() {
+    if (currentTheme === "light") {
+        document.documentElement.classList.add("light-mode");
+    } else {
+        document.documentElement.classList.remove("light-mode");
+    }
+}
+
+function toggleTheme() {
+    currentTheme = currentTheme === "dark" ? "light" : "dark";
+    localStorage.setItem("wellness_theme", currentTheme);
+    initTheme();
+}
+
+// Initialize theme on load
+initTheme();
 
 // ─── Sessions ─────────────────────────────────────────────────────────────────
 function saveSessions() {
@@ -64,7 +83,7 @@ function loadSession(id) {
     document.querySelector(".empty-state")?.remove();
     
     if (session.messages.length === 0) {
-        messagesEl.innerHTML = `<div class="empty-state">Hi ${currentUserName}. Start whenever you're ready.</div>`;
+        messagesEl.innerHTML = `<div class="empty-state">Hi ${currentUserName}! Start whenever you're ready.</div>`;
     } else {
         session.messages.forEach(msg => {
             appendMessageDOM(msg.role, msg.content, msg.isCrisis, msg.time || formatTime());
@@ -91,6 +110,11 @@ function loadSession(id) {
             </div>
             <div class="emotion-bar-container"><div class="emotion-bar-fill" style="width: 100%; opacity: 0.2;"></div></div>
         </div>`;
+
+    // Clear the chart grid too
+    const chart = document.getElementById("emotion-chart");
+    if (chart) chart.innerHTML = "";
+
     document.getElementById("cognitive-load-status").textContent = "OPTIMAL STATUS";
     document.getElementById("cognitive-load-status").style.color = "var(--live-green)";
 }
@@ -186,15 +210,17 @@ function setLiveDot(online) {
     const dot  = document.getElementById("live-dot");
     const text = document.getElementById("live-text");
     const load = document.getElementById("cognitive-load-status");
-    if(!dot || !text || !load) return;
+    if (!dot || !text || !load) return;
 
     if (online) {
         dot.classList.add("online");
         text.classList.add("online");
         text.textContent = "LIVE";
-        if(load.textContent === "RECONNECTING" || load.textContent === "INITIALISING") {
-             load.textContent = "OPTIMAL STATUS";
-             load.style.color = "var(--live-green)";
+        // FIX 8: reset cognitive load whenever connection comes back online,
+        // not only when text is exactly "RECONNECTING" or "INITIALISING"
+        if (load.textContent !== "ELEVATED LOAD" && load.textContent !== "MODERATE LOAD") {
+            load.textContent = "OPTIMAL STATUS";
+            load.style.color = "var(--live-green)";
         }
     } else {
         dot.classList.remove("online");
@@ -206,11 +232,58 @@ function setLiveDot(online) {
 }
 
 // ─── Emotion Sidebar ──────────────────────────────────────────────────────────
+// ─── Emotion Chart Update ─────────────────────────────────────────────────────
+function updateEmotionChart(emotionProfile) {
+    if (!emotionProfile || !emotionProfile.emotions) return;
+
+    // FIX 2: #emotion-chart now exists in HTML; this will find it correctly
+    const chart = document.getElementById("emotion-chart");
+    if (!chart) return;
+
+    const sorted = [...emotionProfile.emotions]
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 6); // Show top 6 emotions
+
+    chart.innerHTML = "";
+    sorted.forEach((emotion) => {
+        const item = document.createElement("div");
+        item.className = "emotion-chart-item";
+        
+        const icon = document.createElement("div");
+        icon.className = "emotion-chart-icon";
+        icon.textContent = getEmotionIcon(emotion.label);
+        
+        const label = document.createElement("div");
+        label.className = "emotion-chart-label";
+        label.textContent = emotion.label.charAt(0).toUpperCase() + emotion.label.slice(1);
+        
+        const bar = document.createElement("div");
+        bar.className = "emotion-chart-bar";
+        const fill = document.createElement("div");
+        fill.className = "emotion-chart-fill";
+        fill.style.width = Math.min(100, Math.max(0, emotion.percentage)) + "%";
+        bar.appendChild(fill);
+        
+        const pct = document.createElement("div");
+        pct.className = "emotion-chart-pct";
+        pct.textContent = emotion.percentage + "%";
+        
+        item.appendChild(icon);
+        item.appendChild(label);
+        item.appendChild(bar);
+        item.appendChild(pct);
+        chart.appendChild(item);
+    });
+}
+
 function updateEmotion(emotionProfile) {
     if (!emotionProfile || !emotionProfile.emotions) return;
     
+    // Update emotion chart
+    updateEmotionChart(emotionProfile);
+    
     const display = document.getElementById("emotion-display");
-    if(!display) return;
+    if (!display) return;
     
     display.innerHTML = "";
     const sorted = [...emotionProfile.emotions].sort((a, b) => b.percentage - a.percentage);
@@ -250,7 +323,7 @@ function updateEmotion(emotionProfile) {
     });
 
     const load = document.getElementById("cognitive-load-status");
-    if(!load) return;
+    if (!load) return;
     
     if (maxIntensity > 75) {
         load.textContent = "ELEVATED LOAD";
@@ -265,12 +338,14 @@ function updateEmotion(emotionProfile) {
 }
 
 // ─── Orb Canvas Animation ─────────────────────────────────────────────────────
+// FIX 1: #orb-canvas now exists in the HTML sidebar, so initOrb() will find it
 (function initOrb() {
     const canvas = document.getElementById("orb-canvas");
-    if (!canvas) return;
+    if (!canvas) return; // graceful guard retained
 
     const DPR = window.devicePixelRatio || 1;
-    const SIZE = 130;
+    // FIX 1b: read the CSS display size at runtime rather than hardcoding 130
+    const SIZE = 110;
     canvas.width  = SIZE * DPR;
     canvas.height = SIZE * DPR;
     canvas.style.width  = SIZE + "px";
@@ -301,10 +376,10 @@ function updateEmotion(emotionProfile) {
         ctx.beginPath();
         for (let i = 0; i <= POINTS; i++) {
             const angle = i * angleStep;
-            const p = blobPoint(angle, 46, 12, 3, phase1 + Math.sin(t * 0.4 + i));
+            const p = blobPoint(angle, 38, 10, 3, phase1 + Math.sin(t * 0.4 + i));
             if (i === 0) ctx.moveTo(p.x, p.y);
             else {
-                const prev = blobPoint((i - 1) * angleStep, 46, 12, 3, phase1 + Math.sin(t * 0.4 + i - 1));
+                const prev = blobPoint((i - 1) * angleStep, 38, 10, 3, phase1 + Math.sin(t * 0.4 + i - 1));
                 const midX = (prev.x + p.x) / 2;
                 const midY = (prev.y + p.y) / 2;
                 ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
@@ -312,7 +387,7 @@ function updateEmotion(emotionProfile) {
         }
         ctx.closePath();
 
-        const grad = ctx.createRadialGradient(cx - 10, cy - 10, 4, cx, cy, 55);
+        const grad = ctx.createRadialGradient(cx - 8, cy - 8, 3, cx, cy, 45);
         grad.addColorStop(0.0, "#e879f9");
         grad.addColorStop(0.4, "#a855f7");
         grad.addColorStop(0.75, "#7c3aed");
@@ -320,13 +395,13 @@ function updateEmotion(emotionProfile) {
         ctx.fillStyle = grad;
 
         ctx.shadowColor   = "rgba(168,85,247,0.55)";
-        ctx.shadowBlur    = 28;
+        ctx.shadowBlur    = 22;
         ctx.fill();
         ctx.shadowBlur    = 0;
 
         ctx.beginPath();
-        ctx.arc(cx - 14, cy - 14, 16, 0, Math.PI * 2);
-        const hl = ctx.createRadialGradient(cx - 14, cy - 14, 2, cx - 14, cy - 14, 16);
+        ctx.arc(cx - 12, cy - 12, 13, 0, Math.PI * 2);
+        const hl = ctx.createRadialGradient(cx - 12, cy - 12, 2, cx - 12, cy - 12, 13);
         hl.addColorStop(0, "rgba(255,255,255,0.18)");
         hl.addColorStop(1, "rgba(255,255,255,0)");
         ctx.fillStyle = hl;
@@ -349,7 +424,7 @@ function appendMessageDOM(role, content, isCrisis = false, time) {
     document.querySelector(".empty-state")?.remove();
 
     const messages = document.getElementById("messages");
-    if(!messages) return;
+    if (!messages) return;
     
     const row = document.createElement("div");
     row.className = `message-row ${role === "user" ? "user-row" : "ai-row"}${isCrisis ? " crisis" : ""}`;
@@ -421,7 +496,7 @@ function appendMessageDOM(role, content, isCrisis = false, time) {
 function showTypingIndicator() {
     removeTypingIndicator();
     const messages = document.getElementById("messages");
-    if(!messages) return;
+    if (!messages) return;
     const row = document.createElement("div");
     row.className = "message-row ai-row";
     row.id = "typing-wrapper";
@@ -450,21 +525,21 @@ function removeTypingIndicator() {
 
 function scrollToBottom() {
     const area = document.getElementById("chat-area");
-    if(area) area.scrollTop = area.scrollHeight;
+    if (area) area.scrollTop = area.scrollHeight;
 }
 
 function setWaiting(val) {
     isWaiting = val;
     const sendBtn = document.getElementById("send-btn");
     const input = document.getElementById("message-input");
-    if(sendBtn) sendBtn.disabled = val;
-    if(input) input.disabled = val;
+    if (sendBtn) sendBtn.disabled = val;
+    if (input) input.disabled = val;
 }
 
 // ─── Send ─────────────────────────────────────────────────────────────────────
 function sendMessage() {
     const input = document.getElementById("message-input");
-    if(!input) return;
+    if (!input) return;
     const text  = input.value.trim();
     if (!text || isWaiting || !ws || ws.readyState !== WebSocket.OPEN) return;
 
@@ -510,3 +585,6 @@ document.getElementById("name-input")?.addEventListener("keydown", (e) => {
 });
 
 document.getElementById("send-btn")?.addEventListener("click", sendMessage);
+
+// Theme toggle
+document.getElementById("theme-toggle")?.addEventListener("click", toggleTheme);
