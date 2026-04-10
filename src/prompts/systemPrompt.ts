@@ -1,4 +1,4 @@
-import type { RouterOutput, MemoryNode, ZepFact, CAMAConsole } from "../types";
+import type { RouterOutput, MemoryNode, ZepFact, CAMAConsole, ArchivedMemory } from "../types";
 import { GOLDEN_EXAMPLES } from "./goldenExample";
 
 interface PromptContext {
@@ -8,6 +8,7 @@ interface PromptContext {
     camaConsole: CAMAConsole;
     zepFacts: ZepFact[];
     zepSummary: string;
+    oldMemories?: ArchivedMemory[];
     emoguardInjection?: string;
 }
 
@@ -38,6 +39,13 @@ function formatRecurringPatterns(patterns: string[]): string {
     return patterns.slice(-3).map((p) => `• ${p}`).join("\n");
 }
 
+function formatOldMemories(memories: ArchivedMemory[] | undefined): string {
+    if (!memories || memories.length === 0) return "No consolidated past themes.";
+    return memories
+        .map((m) => `• ${m.summary} (${m.emotion_tags.join(", ")})`)
+        .join("\n");
+}
+
 export function buildSystemPrompt(ctx: PromptContext): string {
     const {
         userName,
@@ -46,6 +54,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
         camaConsole,
         zepFacts,
         zepSummary,
+        oldMemories,
         emoguardInjection,
     } = ctx;
 
@@ -65,6 +74,9 @@ ${formatZepFacts(zepFacts)}
 
 ━━━ RECENT EMOTIONAL MOMENTS (CAMA) ━━━
 ${formatCAMAMemory(camaNodes)}
+
+━━━ CONSOLIDATED PAST THEMES (Archived Memories) ━━━
+${formatOldMemories(oldMemories)}
 
 ━━━ RECURRING PATTERNS ━━━
 ${formatRecurringPatterns(camaConsole.recurring_patterns)}

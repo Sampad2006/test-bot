@@ -1,5 +1,6 @@
 import { MongoClient, Collection } from "mongodb";
 import { config } from "../config";
+import { getOldMemoryStore } from "./oldMemory";
 import type { MemoryNode, CAMAConsole } from "../types";
 
 const client = new MongoClient(config.mongodbUri);
@@ -37,9 +38,11 @@ export class CAMAMemory {
         identity_facts: [],
     };
     private readonly userId: string;
+    private oldMemory: ReturnType<typeof getOldMemoryStore>;
 
     constructor(userId: string) {
         this.userId = userId;
+        this.oldMemory = getOldMemoryStore(userId);
     }
 
     async load(): Promise<void> {
@@ -76,6 +79,11 @@ export class CAMAMemory {
                     (minI, n, i, arr) => (n.salience < arr[minI].salience ? i : minI),
                     0
                 );
+                const evictedNode = this.ring[minIdx];
+                // Archive to old memory before eviction
+                this.oldMemory.archive(evictedNode, "ring_evicted").catch(err => {
+                    console.error("[CAMA] Failed to archive evicted node:", err);
+                });
                 this.ring.splice(minIdx, 1);
             }
         }
