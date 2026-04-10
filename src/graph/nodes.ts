@@ -11,6 +11,15 @@ import type { WellnessStateType } from "./state";
 
 const groq = new Groq({ apiKey: config.groqApiKey });
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+        ),
+    ]);
+}
+
 // Cache CAMA instances per user (in-memory within process lifetime)
 const camaCache = new Map<string, CAMAMemory>();
 
@@ -70,7 +79,9 @@ export async function memoryFetchNode(
     state: WellnessStateType
 ): Promise<Partial<WellnessStateType>> {
     const cama = getCAMA(state.userId);
-    await cama.load();
+    await withTimeout(cama.load(), 2500, "CAMA load").catch((err) => {
+        console.warn("[MemoryFetch]", (err as Error).message);
+    });
 
     const emotionTags = [
         ...(state.routerOutput?.emotion.emotions.map(e => e.label) ?? []),
@@ -79,8 +90,8 @@ export async function memoryFetchNode(
 
     const [camaNodes, zepContext, zepFacts] = await Promise.all([
         Promise.resolve(cama.recall(emotionTags, 5)),
-        getContext(state.userId, state.currentMessage),
-        getUserFacts(state.userId),
+        withTimeout(getContext(state.userId, state.currentMessage), 3000, "Hybrid getContext").catch(() => ({ facts: [], summary: "" })),
+        withTimeout(getUserFacts(state.userId), 3000, "Hybrid getUserFacts").catch(() => []),
     ]);
 
     return {
@@ -173,17 +184,21 @@ export async function memoryUpdateNode(
     );
 
     // Store the episode in CAMA
-    await cama.ingest(
+    await withTimeout(cama.ingest(
         state.currentMessage,
         [
             ...(state.routerOutput?.emotion.emotions.map(e => e.label) ?? []),
             ...(state.routerOutput?.semantic_memory_tags ?? []),
         ].filter(Boolean),
         salience
-    );
+    ), 2500, "CAMA ingest").catch((err) => {
+        console.warn("[MemoryUpdate]", (err as Error).message);
+    });
 
     // Add to Zep long-term memory + local fallback (via hybridMemory)
-    await addTurn(state.userId, state.currentMessage, state.finalResponse);
+    await withTimeout(addTurn(state.userId, state.currentMessage, state.finalResponse), 3000, "Hybrid addTurn").catch((err) => {
+        console.warn("[MemoryUpdate]", (err as Error).message);
+    });
 
     // Log turn for future fine-tuning (fire-and-forget)
     const systemPromptSnapshot = buildSystemPrompt({

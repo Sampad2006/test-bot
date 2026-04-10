@@ -1,0 +1,4 @@
+deepeval>=1.4.6
+websocket-client>=1.8.0
+python-dotenv>=1.0.1
+openai>=1.51.0

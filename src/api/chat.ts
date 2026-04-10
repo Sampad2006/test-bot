@@ -66,8 +66,12 @@ export function chatHandler(ws: WebSocket): void {
                 console.error("[Chat WS] Error:", err);
                 ws.send(
                     JSON.stringify({
-                        type: "error",
-                        message: "Something went wrong processing your message.",
+                        type: "response",
+                        message:
+                            "Your message matters, and I want to respond carefully. I hit a temporary system issue on my side, so could you resend that in one line while I continue helping you?",
+                        isCrisis: false,
+                        emotion: null,
+                        implicitNeed: "unknown",
                     })
                 );
             }

@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
     "build": "tsc",
-    "start": "node dist/main.js"
+    "start": "node dist/main.js",
+    "eval:promptfoo": "WELLNESS_WS_URL=${WELLNESS_WS_URL:-ws://localhost:8000/chat} WELLNESS_EVAL_TIMEOUT_MS=${WELLNESS_EVAL_TIMEOUT_MS:-45000} npx promptfoo@latest eval -c eval/promptfoo/promptfooconfig.yaml -j 1",
+    "eval:promptfoo:watch": "WELLNESS_WS_URL=${WELLNESS_WS_URL:-ws://localhost:8000/chat} WELLNESS_EVAL_TIMEOUT_MS=${WELLNESS_EVAL_TIMEOUT_MS:-45000} npx promptfoo@latest watch -c eval/promptfoo/promptfooconfig.yaml",
+    "eval:promptfoo:view": "npx promptfoo@latest view",
+    "eval:deepeval": "python3 eval/deepeval/run_deepeval.py",
+    "eval:dataset:build": "python3 eval/datasets/build_eval_set.py"
   },
   "dependencies": {
     "@getzep/zep-cloud": "^2.7.0",

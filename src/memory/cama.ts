@@ -2,7 +2,11 @@ import { MongoClient, Collection } from "mongodb";
 import { config } from "../config";
 import type { MemoryNode, CAMAConsole } from "../types";
 
-const client = new MongoClient(config.mongodbUri);
+const client = new MongoClient(config.mongodbUri, {
+    serverSelectionTimeoutMS: 2500,
+    connectTimeoutMS: 2500,
+    socketTimeoutMS: 5000,
+});
 let camaCollection: Collection | null = null;
 
 async function getCollection(): Promise<Collection> {

@@ -3,7 +3,11 @@ import { MongoClient } from "mongodb";
 import { config } from "../config";
 
 export const sessionRouter = Router();
-const client = new MongoClient(config.mongodbUri);
+const client = new MongoClient(config.mongodbUri, {
+    serverSelectionTimeoutMS: 2500,
+    connectTimeoutMS: 2500,
+    socketTimeoutMS: 5000,
+});
 
 async function getSessionsCollection() {
     await client.connect();
