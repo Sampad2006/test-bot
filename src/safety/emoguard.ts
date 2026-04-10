@@ -1,8 +1,6 @@
-import Groq from "groq-sdk";
 import { config } from "../config";
 import type { EmoGuardReport } from "../types";
-
-const groq = new Groq({ apiKey: config.groqApiKey });
+import { llmBalancer } from "../utils/llmBalancer";
 
 // --- Banned phrases that signal a generic response ---
 const BANNED_PHRASES = [
@@ -45,7 +43,7 @@ export function checkSpecificity(
 }
 
 async function callEmoGuardLLM(prompt: string): Promise<string> {
-    const res = await groq.chat.completions.create({
+    const res = await llmBalancer.createChatCompletion({
         model: config.emoguardModel,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.1,

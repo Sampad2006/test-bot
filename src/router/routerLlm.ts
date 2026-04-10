@@ -1,12 +1,6 @@
-import Groq from "groq-sdk";
 import { config } from "../config";
 import type { RouterOutput } from "../types";
-
-// User requested to comment out gemini specific parts to use Groq Llama model instead
-// import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-// const genAI = new GoogleGenerativeAI(config.geminiApiKey);
-
-const groq = new Groq({ apiKey: config.groqApiKey });
+import { llmBalancer } from "../utils/llmBalancer";
 
 const ROUTER_SYSTEM_PROMPT = `You are an expert clinical psychologist performing real-time signal detection on a user message.
 
@@ -50,7 +44,7 @@ export async function runRouterLLM(
     const prompt = `${historyContext}\n\nCurrent user message to analyze:\n"${userMessage}"`;
 
     try {
-        const completion = await groq.chat.completions.create({
+        const completion = await llmBalancer.createChatCompletion({
             model: config.routerModel,
             messages: [
                 { role: "system", content: ROUTER_SYSTEM_PROMPT },

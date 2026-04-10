@@ -1,6 +1,6 @@
-import Groq from "groq-sdk";
 import { HumanMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 import { config } from "../config";
+import { llmBalancer } from "../utils/llmBalancer";
 import { runRouterLLM } from "../router/routerLlm";
 import { CAMAMemory } from "../memory/cama";
 import { ensureSession, getContext, getUserFacts, addTurn } from "../memory/hybridMemory";
@@ -8,8 +8,6 @@ import { buildSystemPrompt } from "../prompts/systemPrompt";
 import { runEmoGuard, CRISIS_RESPONSES } from "../safety/emoguard";
 import { logFineTuneTurn } from "../finetune/logger";
 import type { WellnessStateType } from "./state";
-
-const groq = new Groq({ apiKey: config.groqApiKey });
 
 // Cache CAMA instances per user (in-memory within process lifetime)
 const camaCache = new Map<string, CAMAMemory>();
@@ -113,7 +111,7 @@ export async function generationNode(
         content: typeof m.content === "string" ? m.content : "",
     }));
 
-    const completion = await groq.chat.completions.create({
+    const completion = await llmBalancer.createChatCompletion({
         model: config.groqModel,
         messages: [
             { role: "system", content: systemPrompt },

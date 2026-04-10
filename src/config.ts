@@ -9,6 +9,7 @@ function required(key: string): string {
 
 export const config = {
     groqApiKey: required("GROQ_API_KEY"),
+    groqApiKeys: (process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "").split(",").map(k => k.trim()).filter(Boolean),
     // Optional: Gemini API Key (commented out as per request to rely on Groq)
     geminiApiKey: process.env.GEMINI_API_KEY ?? "",
     // Optional: Zep Cloud falls back to LocalContextStore if key is missing/invalid
