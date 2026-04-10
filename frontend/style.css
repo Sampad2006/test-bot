@@ -705,6 +705,41 @@ html, body {
   to   { opacity: 1; }
 }
 
+/* ─── AI Reasoning Debug Box ────────────────────────────────────────────────── */
+.ai-thought-box {
+  margin-bottom: 12px;
+  background: rgba(168, 85, 247, 0.05);
+  border: 1px solid rgba(168, 85, 247, 0.15);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  font-size: 11.5px;
+  transition: all 0.2s ease;
+}
+
+.ai-thought-box summary {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--accent);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  outline: none;
+}
+
+.ai-thought-box summary:hover {
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.ai-thought-content {
+  padding: 8px 10px;
+  border-top: 1px solid rgba(168, 85, 247, 0.1);
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-style: italic;
+}
+
 /* ─── Responsive (minimal) ────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   :root { --sidebar-w: 0px; }

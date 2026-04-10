@@ -367,9 +367,43 @@ function appendMessageDOM(role, content, isCrisis = false, time) {
     senderName.className = "sender-name";
     senderName.textContent = role === "user" ? currentUserName : "Wellness AI";
 
+    let displayContent = content;
+    let thoughtContent = null;
+
+    if (role === "ai" || role === "assistant") {
+        const thoughtMatch = content.match(/<thought>([\s\S]*?)<\/thought>/i);
+        if (thoughtMatch) {
+            thoughtContent = thoughtMatch[1].trim();
+            displayContent = content.replace(/<thought>[\s\S]*?<\/thought>/i, '').trim();
+        }
+    }
+
     const bubble = document.createElement("div");
     bubble.className = "bubble";
-    bubble.textContent = content;
+
+    if (thoughtContent) {
+        const details = document.createElement("details");
+        details.className = "ai-thought-box";
+        const summary = document.createElement("summary");
+        summary.textContent = "AI Reasoning (Dev Mode)";
+        const thoughtText = document.createElement("div");
+        thoughtText.className = "ai-thought-content";
+        thoughtText.textContent = thoughtContent;
+        details.appendChild(summary);
+        details.appendChild(thoughtText);
+        bubble.appendChild(details);
+    }
+
+    // Safely parse basic markdown (bold, italics, newlines)
+    let formattedHtml = displayContent
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') // escape HTML
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br/>');
+
+    const textSpan = document.createElement("span");
+    textSpan.innerHTML = formattedHtml;
+    bubble.appendChild(textSpan);
 
     const timEl = document.createElement("div");
     timEl.className = "msg-time";

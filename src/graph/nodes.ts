@@ -121,7 +121,7 @@ export async function generationNode(
             { role: "user", content: state.currentMessage },
         ],
         temperature: 0.8,
-        max_tokens: 350,
+        max_tokens: 1024,
         presence_penalty: 0.6,  // reduces repetitive/generic phrasing
     });
 
