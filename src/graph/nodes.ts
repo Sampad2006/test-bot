@@ -4,6 +4,7 @@ import { llmBalancer } from "../utils/llmBalancer";
 import { runRouterLLM } from "../router/routerLlm";
 import { CAMAMemory } from "../memory/cama";
 import { ensureSession, getContext, getUserFacts, addTurn } from "../memory/hybridMemory";
+import { getOldMemoryStore } from "../memory/oldMemory";
 import { buildSystemPrompt } from "../prompts/systemPrompt";
 import { runEmoGuard, CRISIS_RESPONSES } from "../safety/emoguard";
 import { logFineTuneTurn } from "../finetune/logger";
@@ -75,10 +76,13 @@ export async function memoryFetchNode(
         ...(state.routerOutput?.semantic_memory_tags ?? []),
     ].filter(Boolean);
 
-    const [camaNodes, zepContext, zepFacts] = await Promise.all([
+    const oldMemory = getOldMemoryStore(state.userId);
+
+    const [camaNodes, zepContext, zepFacts, oldMemories] = await Promise.all([
         Promise.resolve(cama.recall(emotionTags, 5)),
         getContext(state.userId, state.currentMessage),
         getUserFacts(state.userId),
+        emotionTags.length > 0 ? oldMemory.search(emotionTags, state.currentMessage, 3) : Promise.resolve([]),
     ]);
 
     return {
@@ -86,6 +90,7 @@ export async function memoryFetchNode(
         camaConsole: cama.getConsole(),
         zepFacts: [...zepContext.facts, ...zepFacts],
         zepSummary: zepContext.summary,
+        oldMemories,
     };
 }
 
@@ -100,6 +105,7 @@ export async function generationNode(
         camaConsole: state.camaConsole,
         zepFacts: state.zepFacts,
         zepSummary: state.zepSummary,
+        oldMemories: state.oldMemories,
         emoguardInjection:
             state.emoguardReport?.should_refine
                 ? state.emoguardReport.intervention_advice

@@ -1,6 +1,6 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
 import { BaseMessage } from "@langchain/core/messages";
-import type { RouterOutput, MemoryNode, ZepFact, EmoGuardReport, CAMAConsole } from "../types";
+import type { RouterOutput, MemoryNode, ZepFact, EmoGuardReport, CAMAConsole, ArchivedMemory } from "../types";
 
 // Helper: last-write-wins reducer for simple scalar/object fields
 function lastValue<T>() {
@@ -31,6 +31,7 @@ export const WellnessState = Annotation.Root({
     }),
     zepFacts: Annotation<ZepFact[]>({ reducer: lastValue<ZepFact[]>(), default: () => [] }),
     zepSummary: Annotation<string>({ reducer: lastValue<string>(), default: () => "" }),
+    oldMemories: Annotation<ArchivedMemory[]>({ reducer: lastValue<ArchivedMemory[]>(), default: () => [] }),
 
     // Generation
     responseDraft: Annotation<string>({ reducer: lastValue<string>(), default: () => "" }),

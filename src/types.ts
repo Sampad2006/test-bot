@@ -67,3 +67,15 @@ export interface ZepFact {
     valid_at?: string;
     invalid_at?: string;
 }
+
+// Old Memory (Consolidated archives) types
+export interface ArchivedMemory {
+    userId: string;
+    originalContent: string;
+    summary: string;
+    emotion_tags: string[];
+    originalSalience: number;
+    archiveReason: string;
+    archivedAt: Date;
+    expiresAt?: Date;
+}
